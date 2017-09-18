@@ -1,0 +1,6 @@
+[package]
+name = "destiny_vendor_rank"
+version = "0.1.0"
+authors = ["Nolan Brubaker <nolan@nbrubaker.com>"]
+
+[dependencies]

@@ -5,7 +5,6 @@ extern crate reqwest;
 extern crate serde_derive;
 extern crate serde_json;
 use serde_json::Value;
-use serde_json::error;
 
 use std::collections::HashMap;
 use std::env;
@@ -13,11 +12,13 @@ use std::io::Read;
 
 header! { (XAPIKey, "X-API-Key") => [String] }
 
-#[derive(Deserialize)]
-struct MemResponse {
-    response: Vec<HashMap<String, String>>
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Faction {
+    faction_hash: u32,
+    progress_to_next_level: u32,
+    next_level_at: u32
 }
-
 
 const BASE: &'static str = "https://bungie.net/Platform/Destiny2/";
 
@@ -44,7 +45,6 @@ fn get_profile(platform: i32, member_id: &str) -> Result<String, String> {
     let resp = make_request(&url);
     let mut content = String::new();
     let _ = resp.unwrap().read_to_string(&mut content);
-    println!("{:?}", content);
     Ok(content.to_string())
 }
 
@@ -55,8 +55,28 @@ fn make_headers() -> Headers {
     headers
 }
 
+fn get_factions(json_blob: &serde_json::Value) -> HashMap<String, Vec<Faction>> {
+   let mut m = HashMap::new();
+   for (key, val) in json_blob["Response"]["characterProgressions"]["data"].as_object().unwrap().iter() {
+     let mut factions: Vec<Faction> = Vec::new();
+
+     for obj in val["factions"].as_object().unwrap().values() {
+         let faction: Faction = serde_json::from_value(obj.clone()).unwrap();
+         factions.push(faction);
+     }
+     m.insert(key.to_string(), factions);
+   }
+   m
+}
+
+
 fn main() {
     let member_id = get_member_id(2, &"guubu").expect("Member ID not found");
     println!("{:?}", member_id);
-    println!("{:?}", get_profile(2, &member_id));
+    let profile = get_profile(2, &member_id).unwrap();
+    let v: Value = serde_json::from_str(profile.as_str()).unwrap();
+    let factions = get_factions(&v);
+    for (character, fs) in factions {
+        println!("{}: {:?}", character, fs);
+    }
 }

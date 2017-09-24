@@ -23,8 +23,7 @@ const BASE: &'static str = "https://bungie.net/Platform/Destiny2/";
 
 fn get_member_id(platform: i32, user: &str) -> Result<String, String> {
     let url = format!("{}SearchDestinyPlayer/{}/{}/", BASE, platform, user);
-    let client = reqwest::Client::new().map_err(|e| e.to_string())?;
-    let resp = client.get(url.as_str()).map_err(|e| e.to_string())?.headers(make_headers()).send();
+    let resp = make_request(&url);
     let mut content = String::new();
     let _ = resp.unwrap().read_to_string(&mut content);
     let v: Value = serde_json::from_str(content.as_str()).map_err(|e| e.to_string()).unwrap();
@@ -32,10 +31,21 @@ fn get_member_id(platform: i32, user: &str) -> Result<String, String> {
     Ok(mem_id)
 }
 
-fn get_profile(platform: i32, user: &str) -> String {
-    let url = format!("{}{}/Profile/{}", BASE, platform, &"id");
+fn make_request(url: &str) -> Result<reqwest::Response, reqwest::Error> {
+    let client = reqwest::Client::new()?;
+    let headers = make_headers();
+    println!("{:?}", headers);
+    client.get(url)?.headers(headers).send()
+}
 
-    url
+fn get_profile(platform: i32, member_id: &str) -> Result<String, String> {
+    let url = format!("{}{}/Profile/{}/?components=200,202", BASE, platform, member_id);
+    println!("{:?}", url);
+    let resp = make_request(&url);
+    let mut content = String::new();
+    let _ = resp.unwrap().read_to_string(&mut content);
+    println!("{:?}", content);
+    Ok(content.to_string())
 }
 
 fn make_headers() -> Headers {
@@ -46,7 +56,7 @@ fn make_headers() -> Headers {
 }
 
 fn main() {
-    let resp = get_member_id(2, &"guubu");
-    println!("{:?}", resp);
-    println!("{}", get_profile(2, &"guubu"));
+    let member_id = get_member_id(2, &"guubu").expect("Member ID not found");
+    println!("{:?}", member_id);
+    println!("{:?}", get_profile(2, &member_id));
 }
